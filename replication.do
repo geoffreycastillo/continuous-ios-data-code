@@ -4,29 +4,31 @@
 **********************************************************************
 **********************************************************************
 
+*******************
+/* Test Packages */
+*******************
+
+* check if somersd is installed
+* if not > ssc install somersd
+which somersd
+
+* check if esttab is installed
+* if not > ssc install estout
+which esttab
+
+* if not installed, will throw an error
+
+
 ***************
 /* Load Data */
 ***************
 
 clear
+eststo clear
 use "data", clear
 set seed 5330
 set scheme modern
 
-
-*******************
-/* Test Packages */
-*******************
-
-display "- Checking if package somersd is installed..."
-display "If not > findit somersd"
-which somersd
-
-display "- Checking if package esttab is installed..."
-display "If not > findit esttab"
-which esttab
-
-* if not installed, will throw an error
 
 
 **************************************
@@ -80,12 +82,14 @@ drop if ios_continuous1ios_overlap > 1 & ios_continuous1ios_overlap != .
 tab task_order
 
 gen session_type = .
-	replace session_type = 1 if task_order == 3 
-	replace session_type = 1 if task_order == 4
-	replace session_type = 2 if task_order == 1 
-	replace session_type = 2 if task_order == 2 
+	replace session_type = 2 if task_order == 3 
+	replace session_type = 2 if task_order == 4
+	replace session_type = 1 if task_order == 1 
+	replace session_type = 1 if task_order == 2 
 
-label define session_type 1 "Continuous IOS" 2 "Step-Choice IOS"
+label define session_type 	1 "Step-Choice IOS" ///
+							2 "Continuous IOS"
+							
 label values session_type session_type
 
 tab session_type
@@ -112,39 +116,41 @@ gen ios_continuous_overlap_bounded = .
 or the Step-Choice IOS scale and the standard IOS scale (with boot-
 strapped 95% confidence intervals) */
 
-preserve
 
 gen OGIOSNumber_less_NewIOSNumber = .
 	replace OGIOSNumber_less_NewIOSNumber = ios_discrete_pictures1ios_number - ios_discrete1ios_number
 	replace OGIOSNumber_less_NewIOSNumber = ios_discrete_pictures1ios_number - ios_continuous_overlap_bounded ///
 		if OGIOSNumber_less_NewIOSNumber == .
 
-replace session_type = 3 if session_type == 1
-
-bootstrap _b, reps(1000): mean OGIOSNumber_less_NewIOSNumber if session_type == 3
-estat bootstrap, percentile
-matrix ci_continuous = e(ci_percentile)
 
 bootstrap _b, reps(1000): mean OGIOSNumber_less_NewIOSNumber if session_type == 2
 estat bootstrap, percentile
+matrix ci_continuous = e(ci_percentile)
+
+bootstrap _b, reps(1000): mean OGIOSNumber_less_NewIOSNumber if session_type == 1
+estat bootstrap, percentile
 matrix ci_step_choice = e(ci_percentile)
+
+preserve
 		
-collapse OGIOSNumber_less_NewIOSNumber,by(session_type)
+collapse OGIOSNumber_less_NewIOSNumber, by(session_type)
+
 gen y1 = .
-	replace y1 = ci_continuous[1,1] if session_type == 3
-	replace y1 = ci_step_choice[1,1] if session_type == 2
+	replace y1 = ci_continuous[1,1] if session_type == 2
+	replace y1 = ci_step_choice[1,1] if session_type == 1
 gen y2 = .
-	replace y2 = ci_continuous[2,1] if session_type == 3
-	replace y2 = ci_step_choice[2,1] if session_type == 2
+	replace y2 = ci_continuous[2,1] if session_type == 2
+	replace y2 = ci_step_choice[2,1] if session_type == 1
 	
 twoway (scatter session_type OGIOSNumber_less_NewIOSNumber ) || (rcap y1 y2 session_type, horizontal), ///
 	ytitle("") leg(off) ///
-	ylabel(3 "Continuous IOS" 2 "Step-Choice IOS") ///
+	ylabel(2 "Continuous IOS" 1 "Step-Choice IOS") ///
 	aspect(0.1) yscale(lstyle(none)) xscale(lstyle(none)) ylabel(, tstyle(major_notick)) ///
 	xla(-0.2(0.1)0.3, grid) ysize(1) scale(4)
 	
-	graph save graphs/ios-comparison.gph, replace	   
-	graph export graphs/ios-comparison2.pdf, replace	   
+graph save graphs/ios-comparison.gph, replace	   
+graph export graphs/ios-comparison.pdf, replace	
+	
 
 restore
 
@@ -233,14 +239,20 @@ ytitle(Continuous IOS Overlap, axis(2)) yla(0(0.2)1, axis(2) ang(h) nogrid) ///
 ytitle(Continuous IOS Categories, axis(1)) ytick(-0.0715 1.0715, noticks) ///
 ylabel(0.000584377 "1" 0.142816691 "2" 0.286956972 "3" 0.430615714 "4" ///
 0.572976673 "5" 0.716536687 "6" 0.919451071 "7", axis(1) tposition(inside) nogrid) ///
-note("The left {it:y} axis shows the continuous IOS measure in seven categories while the right {it:y} axis shows the" "continuous IOS measure between 0 and 1. Shown with jitter 6 to differentiate between data points.", span size(vsmall)) ///
+note("The left {it:y} axis shows the Continuous IOS scale in seven categories while the right {it:y} axis shows the" "Continuous IOS scale between 0 and 1. Jittered.", span size(vsmall)) ///
 aspect(1) legend(off) graphregion(color(white)) xsize(5) ysize(5)
 
-graph save graphs/ContIOSOverlapShadedvsOriginalPictorial_Jitter4.gph, replace	   
-graph export graphs/ContIOSOverlapShadedvsOriginalPictorial_Jitter4.pdf, replace	
+graph save graphs/ContIOSOverlapShadedvsOriginalPictorial_Jitter6.gph, replace	   
+graph export graphs/ContIOSOverlapShadedvsOriginalPictorial_Jitter6.pdf, replace
 
 
-/* Table 2: How dissimilarity and respondents' characteristics explain the reported IOS score, ordered logistic regression. */
+
+
+
+
+
+
+/* Table 2 and 3: How dissimilarity and respondents' characteristics explain the reported IOS score, ordered logistic regression. */
 
 * Get player age *
 
@@ -267,7 +279,7 @@ replace survey1marital = "separated or widowed" if inlist(survey1marital, "separ
 foreach var in survey1sex survey1race survey1religion_denomination survey1ethnicity_choice survey1religion_denomination survey1political_party survey1marital survey1social_class survey1work_last_week survey1place_growing_up survey1highest_degree {
 	replace `var' = upper(substr(`var', 1, 1)) + lower(substr(`var', 2, .))
 }
-replace survey1religion_denomination = "Roman Cahtholic" if survey1religion_denomination == "Roman catholic"
+replace survey1religion_denomination = "Roman Catholic" if survey1religion_denomination == "Roman catholic"
 
 
 * Turn string vars into numeric *
@@ -305,9 +317,24 @@ label variable survey1death_penalty "Approve death penalty"
 label variable survey1same_sex_relations "Approve same-sex relations"
 
 * Ordered logistic regression *
-	
+
+*only distance
 ologit ios_discrete_pictures1ios_number ///
-	match0objective_distance_correct ///
+	match0objective_distance_correct,  ///
+	robust
+	
+esttab using tables/ios-distance-only.tex, ///
+	fragment nogap booktabs wide ///
+	b(3) se(3) star(* 0.10 ** 0.05 *** 0.01) ///
+	label nomtitles nonumbers nobaselevels eqlabels(none)  ///
+	varlabels(,blist(cut1 "\midrule ")) ///
+	stats(N r2_p chi2 p, fmt(0 3) labels(`"Observations"' `"Pseudo \(R^{2}\)"' `"Wald \(\chi^2\)"' `"Prob > \(\chi^2\)"' )) ///
+	replace
+	
+eststo clear
+
+
+local demographic_variables ///
 	playerage i.survey1sex_n ib(freq).survey1race_n ib(freq).survey1ethnicity_choice_n ///
 	ib(freq).survey1religion_denomination_n ///
 	ib(freq).survey1political_party_n ib(freq).survey1marital_n  ///
@@ -317,15 +344,28 @@ ologit ios_discrete_pictures1ios_number ///
 	survey1children_number survey1household_income ///
 	survey1people_helpful survey1people_take_advntg_of_you survey1people_trustworthy ///
 	survey1labor_union survey1unemployed_10_years ///
-	survey1affirmative_action survey1sex_before_marriage survey1same_sex_relations survey1death_penalty,  ///
+	survey1affirmative_action survey1sex_before_marriage survey1same_sex_relations survey1death_penalty
+
+		
+* without distance
+eststo: ologit ios_discrete_pictures1ios_number ///
+	`demographic_variables',  ///
+	robust
+	
+* with distance
+eststo: ologit ios_discrete_pictures1ios_number ///
+	match0objective_distance_correct ///
+	`demographic_variables',  ///
 	robust
 
+	
 * Generate LaTeX code of results *
 
 esttab using tables/ios-self-charac.tex, ///
 	fragment nogap booktabs wide ///
 	b(3) se(3) star(* 0.10 ** 0.05 *** 0.01) ///
-	label nonumbers nomtitles nobaselevels eqlabels(none)  ///
+	label nomtitles nobaselevels eqlabels(none)  ///
+	order(match0objective_distance_correct) ///
 	refcat( ///
 		2.survey1sex_n "\addlinespace Gender (ref.: female)" ///
 		1.survey1race_n "\addlinespace Race (ref.: white)" ///
@@ -342,3 +382,38 @@ esttab using tables/ios-self-charac.tex, ///
 	varlabels(,blist(cut1 "\midrule " survey1children_number "\addlinespace ")) ///
 	stats(N r2_p chi2 p, fmt(0 3) labels(`"Observations"' `"Pseudo \(R^{2}\)"' `"Wald \(\chi^2\)"' `"Prob > \(\chi^2\)"' )) ///
 	replace
+
+	
+* vif reported in footnote
+regress ios_discrete_pictures1ios_number ///
+	match0objective_distance_correct ///
+	playerage i.survey1sex_n ib(freq).survey1race_n ib(freq).survey1ethnicity_choice_n ///
+	ib(freq).survey1religion_denomination_n ///
+	ib(freq).survey1political_party_n ib(freq).survey1marital_n  ///
+	 ib(freq).survey1social_class_n ///
+	ib(freq).survey1work_last_week_n ///
+	ib(freq).survey1place_growing_up_n ib(freq).survey1highest_degree_n ///
+	survey1children_number survey1household_income ///
+	survey1people_helpful survey1people_take_advntg_of_you survey1people_trustworthy ///
+	survey1labor_union survey1unemployed_10_years ///
+	survey1affirmative_action survey1sex_before_marriage survey1same_sex_relations survey1death_penalty,  ///
+	robust
+
+vif
+
+
+/* Frequency tables reported in Appendix D */
+
+local options cell(b rowpct(fmt(2)) colpct(fmt(2)) pct(fmt(2))) ///
+	unstack fragment nogap booktabs nomtitles nonumbers noobs collabels(none) ///
+	replace
+
+eststo clear
+	
+* step-choice vs standard
+estpost tabulate ios_discrete_pictures1ios_number ios_discrete1ios_number
+esttab . using tables/standard-vs-stepchoice.tex, `options'
+* continuous vs standard
+estpost tabulate ios_discrete_pictures1ios_number ios_continuous_overlap_bounded
+esttab . using tables/standard-vs-continuous.tex, `options'
+

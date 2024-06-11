@@ -6,3 +6,8 @@ In Stata, `cd` to the folder where you have downloaded or cloned the repository,
 
 The data is in `redacted-data/`. 
 With `data.dta` you can start directly with `02 analysis.do`.
+
+# Variables
+
+Most variables have a value label in Stata.
+We also offer a description of the variables in the file `variables-description.csv`.

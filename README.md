@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/602582664.svg)](https://zenodo.org/doi/10.5281/zenodo.11913642)
+
 This repository provides the data and code to reproduce the results for [Beranek and Castillo 'Continuous Inclusion of Other in the Self'](https://geoffreycastillo.com/pdf/Beranek,Castillo-Continuous-Inclusion-of-Other-in-the-Self.pdf).
 
 # Use
